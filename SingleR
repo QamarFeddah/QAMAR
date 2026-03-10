@@ -1,0 +1,85 @@
+##Author: Qamar Feddah
+#script for performing automatic annotation
+
+set.seed(333)
+library(Seurat)
+library(celldex)
+library(SingleR)
+library(tidyverse)
+setwd("~/ConM_project/Analysis/03_Automatic_singleR_annotation/")
+
+# Load the data
+seurat_conM <- readRDS("C:/Users/Qamar/Documents/ConM_project/Analysis/02_Data_Normalization/seurat_conM_Clustered.RDS")
+ref_data <- celldex::MonacoImmuneData()
+col_date(ref_data)
+DefaultAssay (seurat_conM) <- "SCT"
+
+# Perform annotation
+sce_conM <- as.SingleCellExperiment(seurat_conM, assay = "SCT")
+
+annot_fine <- SingleR(test = sce_conM, ref = ref_data, labels = ref_data$label.fine)
+annot_main <- SingleR(test = sce_conM, ref = ref_data, labels = ref_data$label.main)
+
+# Extract the predicted label for every cell
+annot_fine_labels <- annot_fine@listData$labels
+annot_main_labels <- annot_main@listData$labels
+
+# build a named vector aligned to Seurat cells
+fine <- setNames(annot_fine_labels, rownames(annot_fine))
+fine <- fine[colnames(seurat_conM)]
+main <- setNames(annot_main_labels, rownames(annot_main))
+main <- main[colnames(seurat_conM)]
+
+# Add annotation column to the metadata
+seurat_conM <- AddMetaData(object= seurat_conM, metadata = fine, col.name = "FineAnnotation")
+seurat_conM <- AddMetaData(object= seurat_conM, metadata = main, col.name = "MainAnnotation")
+
+# UMAP Plot
+FineAnnot_monaco_umap_plot <- DimPlot(seurat_conM, repel = TRUE, group.by = "FineAnnotation")+
+  ggtitle("Cell Fine Annotation(Monaco)") ; FineAnnot_monaco_umap_plot
+
+MainAnnot_monaco_Umap_plot <- DimPlot(seurat_conM, repel = TRUE, group.by = "MainAnnotation") +
+  ggtitle("Cell Annotation (Monaco)") ; MainAnnot_monaco_Umap_plot
+
+##the Human Primary Cell Atlas (HPCA) reference dataset.
+## Load the normalized object and reference
+ref_data <- celldex::NovershternHematopoieticData()
+
+# Perform annotation
+sce_conM <- as.SingleCellExperiment(seurat_conM, assay = "SCT")
+
+annot_fine <- SingleR(test = sce_conM, ref = ref_data, labels = ref_data$label.fine)
+annot_main <- SingleR(test = sce_conM, ref = ref_data, labels = ref_data$label.main)
+
+
+# Extract the predicted label for every cell
+annot_fine_labels <- annot_fine@listData$labels
+annot_main_labels <- annot_main@listData$labels
+
+# build a named vector aligned to Seurat cells
+fine <- setNames(annot_fine_labels, rownames(annot_fine))
+fine <- fine[colnames(seurat_conM)]
+main <- setNames(annot_main_labels, rownames(annot_main))
+main <- main[colnames(seurat_conM)]
+
+# Add annotation column to the metadata
+seurat_conM <- AddMetaData(object= seurat_conM, metadata = fine, col.name = "FineAnnotation")
+seurat_conM <- AddMetaData(object= seurat_conM, metadata = main, col.name = "MainAnnotation")
+
+
+# UMAP Plot
+FineAnnot_nov_umap_plot <- DimPlot(seurat_conM, repel = TRUE, group.by = "FineAnnotation")+
+  ggtitle("Novershtern Hematopoietic Data - Fine") ; FineAnnot_nov_umap_plot
+MainAnnot_nov_umap_plot <- DimPlot(seurat_conM, repel = TRUE, group.by = "MainAnnotation")+
+  ggtitle("Novershtern Hematopoietic Data - Main") ; MainAnnot_nov_umap_plot
+# save the file and RDS
+saveRDS(seurat_conM, file = "SingleR_annot.RDS")
+pdf(file = "ConM_scRNAseq_SingleR_Labels_UMAP.pdf", width = 16, height = 8)
+
+
+print(FineAnnot_monaco_umap_plot)
+print(FineAnnot_nov_umap_plot)
+print(MainAnnot_monaco_Umap_plot)
+print(MainAnnot_nov_umap_plot)
+dev.off()
+
