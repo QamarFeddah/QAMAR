@@ -1,0 +1,69 @@
+# Author: Qamar feddah
+# script for for perform SCT normalization analysis on ConM dataset
+
+## Library loading
+set.seed(333)
+library(Seurat)
+library(tidyverse)
+library(sctransform)
+library(glmGamPoi)
+library(scCustomize)
+library(dplyr)
+setwd("~/ConM_project/Analysis/02_Data_Normalization/")
+
+#data normalization using Sctransform method
+seurat_conM <- readRDS("C:/Users/Qamar/Documents/ConM_project/Analysis/1.1_Data_Preprocessing/Seurat_conM_cleanUp.RDS")
+DefaultAssay(seurat_conM) <- "RNA"
+seurat_conM <- SCTransform(seurat_conM, vst.flavor= "v2", verbose = TRUE) #this creates a new assay named SCT
+
+#dimensionality reduction
+DefaultAssay(seurat_conM) <- "SCT"
+sct_var <- VariableFeatures(seurat_conM)
+features_keep_sct <- grep(pattern = "^IGHV|^IGKV|^IGLV|^IGHJ|^IGKJ|^IGLJ|^IGHD[0-9A-Z]+|^IGLC|^IGKC|^ENSG", sct_var, invert = TRUE)
+features_keep_sct <- sct_var[features_keep_sct]
+seurat_conM <- RunPCA(seurat_conM, verbose= TRUE, npcs = 50,features = features_keep_sct)
+ElbowPlot(seurat_conM, ndims = 50)
+seurat_conM <- RunUMAP(seurat_conM, reduction = "pca", dims = 1:30, verbose = TRUE)
+
+#cluster the cells
+seurat_conM <- FindNeighbors(seurat_conM, reduction = "pca", dims= 1:30, verbose = TRUE)
+seurat_conM <- FindClusters(seurat_conM, resolution = 0.3, verbose = TRUE, algorithm = 4)
+head(seurat_conM@meta.data)
+
+#visualiztion
+cluster_umap_plot <-
+  DimPlot(seurat_conM, label = T, repel = T) +
+  ggtitle("UMAP of cell clusters") ; cluster_umap_plot
+
+umap_plot_sample <- 
+  DimPlot(seurat_conM, label = F, repel = T, group.by = "Sample_ID") +
+  ggtitle("Cell Clustering using SCTransform") ; umap_plot_sample 
+### No need for integration with harmony to remove sample-specific variance/effects
+
+
+# Differential Expression 
+# 1) Set the clustering column
+Idents(seurat_conM) <- "SCT_snn_res.0.3" ##change the column name according to res
+#use SCT assay and PREP for DE on SCT
+DefaultAssay(seurat_conM) <- "SCT"
+seurat_conM <- PrepSCTFindMarkers(seurat_conM)
+# Define markers
+markers <- FindAllMarkers(seurat_conM, only.pos = TRUE, logfc.threshold = 0.1, min.pct = 0.01) %>%
+  filter(p_val_adj <= 0.05) %>%
+  arrange(cluster, desc(avg_log2FC), p_val_adj)
+write.csv(markers,"marker_all_clusters.csv", row.names = FALSE)
+# top 10 per cluster
+top10 <- markers %>% group_by(cluster) %>% slice_max(avg_log2FC, n= 10)
+write.csv(top10, "marker_all_clusters_top10.csv", row.names = FALSE)
+
+###check the batch effect by donor and lane
+conM_seurat <- readRDS("C:/Users/Qamar/Documents/ConM_project/Analysis/007_confounder_Assessments/outputs/seurat_conM.rds")
+Sample_plot <- DimPlot(conM_seurat, label = F, repel = T, group.by = "Donor") ; Sample_plot
+Lane_plot <- DimPlot(conM_seurat, label = F, repel = T, group.by = "Lane"); Lane_plot
+
+#save the plots ad the seurat object
+saveRDS(seurat_conM, file = "seurat_conM_Clustered.RDS")
+pdf(file = "ConM_10x_scRNAseq_Clustering_plots.pdf", paper = "a4r")
+print(Sample_plot)
+print(Lane_plot)
+dev.off()
