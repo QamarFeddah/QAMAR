@@ -94,4 +94,13 @@ pca_df$IgG3 <- colData$IgG3
 pca_df$IgG4 <- colData$IgG4
 pca_df$IgA  <- colData$IgA
 
+#save outputs
 saveRDS(seurat_conM, "outputs/seurat_conM.rds")
+saveRDS(sample_meta_data, "outputs/sample_meta_data.rds")
+saveRDS(unified_meta_data, "outputs/unified_meta_data.rds")
+saveRDS(count_matrix, "outputs/count_matrix.rds")
+saveRDS(colData, "outputs/colData.rds")
+saveRDS(dds, "outputs/dds_pca_base.rds")
+saveRDS(vsd, "outputs/vsd.rds")
+saveRDS(pca_data, "outputs/pca_data.rds")
+saveRDS(pca_df, "outputs/pca_df.rds")
