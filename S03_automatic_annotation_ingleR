@@ -6,12 +6,15 @@ library(Seurat)
 library(celldex)
 library(SingleR)
 library(tidyverse)
-setwd("~/ConM_project/Analysis/03_Automatic_singleR_annotation/")
+
+##set work directory
+project_dir <- "../.."
+setwd(project_dir)
 
 # Load the data
-seurat_conM <- readRDS("C:/Users/Qamar/Documents/ConM_project/Analysis/02_Data_Normalization/seurat_conM_Clustered.RDS")
+seurat_conM <- readRDS("Analysis/02_Data_Normalization/seurat_conM_Clustered.RDS")
 ref_data <- celldex::MonacoImmuneData()
-col_date(ref_data)
+col_data(ref_data)
 DefaultAssay (seurat_conM) <- "SCT"
 
 # Perform annotation
@@ -73,8 +76,10 @@ FineAnnot_nov_umap_plot <- DimPlot(seurat_conM, repel = TRUE, group.by = "FineAn
 MainAnnot_nov_umap_plot <- DimPlot(seurat_conM, repel = TRUE, group.by = "MainAnnotation")+
   ggtitle("Novershtern Hematopoietic Data - Main") ; MainAnnot_nov_umap_plot
 # save the file and RDS
-saveRDS(seurat_conM, file = "SingleR_annot.RDS")
-pdf(file = "ConM_scRNAseq_SingleR_Labels_UMAP.pdf", width = 16, height = 8)
+# save the file and RDS
+saveRDS(seurat_conM, file = "Analysis/03_Automatic_singleR_annotation/SingleR_annot.RDS")
+pdf(file = "Analysis/03_Automatic_singleR_annotation/ConM_scRNAseq_SingleR_Labels_UMAP.pdf", width = 16, height = 8)
+
 
 
 print(FineAnnot_monaco_umap_plot)
