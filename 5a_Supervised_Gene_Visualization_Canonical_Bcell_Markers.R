@@ -5,9 +5,11 @@ library(scCustomize)
 set.seed(333)
 
 # Set working directory
-setwd("C:/Users/Qamar/Documents/ConM_project/Analysis/05_supervised_Analysis")
+project_dir <- "../.."
+setwd(project_dir)
+
 ## Load the seurat Object
-seurat_conM <- readRDS("~/ConM_project/Analysis/02_Data_Normalization/seurat_conM_Clustered.RDS")
+seurat_conM <- readRDS("Analysis/02_Data_Normalization/seurat_conM_Clustered.RDS")
 
 ## Visualization of Genes and dotplots
 feat_trans <- c("TCL1A", "CD24", "CD38", "IL4R", "VPREB3", "IGLL1", "IRF8","CD72")
@@ -29,7 +31,7 @@ aty_plot <- FeaturePlot_scCustom(seurat_conM, features = feat_aty); aty_plot
 clust_dot_plot <- Clustered_DotPlot(seurat_conM, features = feat_canon_b, plot_km_elbow = F); clust_dot_plot
 
 # Create PDF
-pdf(file = "Canonical_UMAP_B_Cell_Supervised_Analysis.pdf")
+pdf(file = "Analysis/05_supervised_Analysis/Canonical_UMAP_B_Cell_Supervised_Analysis.pdf")
 print(cluster_plot)
 print(trans_plot)
 print(naive_plot)
@@ -39,7 +41,7 @@ print(plasma_plot)
 print(clust_dot_plot)
 dev.off()
 
-pdf(file = "Canonical_DotPlot_B_Cell_Supervised_Analysis.pdf")
+pdf(file = "Analysis/05_supervised_Analysis/Canonical_DotPlot_B_Cell_Supervised_Analysis.pdf")
 print(clust_dot_plot)
 dev.off()
 
