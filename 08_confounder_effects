@@ -1,0 +1,101 @@
+### Author Qamar Feddah
+### PCA plots to check confounder effects
+
+library(tidyverse)
+
+set.seed(333)
+
+project_dir <- "../.."
+setwd(project_dir)
+
+dir.create("outputs", showWarnings = FALSE)
+dir.create("outputs/plots", recursive = TRUE, showWarnings = FALSE)
+
+pca_df <- readRDS("outputs/pca_df.rds")
+
+pca_plot_SR <-
+  ggplot(pca_df, aes(x = PC1, y = PC2, color = Sex, shape = Randomisation)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC1", y = "PC2")
+
+pca_plot_SR2 <-
+  ggplot(pca_df, aes(x = PC3, y = PC4, color = Sex, shape = Randomisation)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC3", y = "PC4")
+
+pca_plot_AS <-
+  ggplot(pca_df, aes(x = PC1, y = PC2, color = Age_group, shape = Sex)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC1", y = "PC2")
+
+pca_plot_AS2 <-
+  ggplot(pca_df, aes(x = PC3, y = PC4, color = Age_group, shape = Sex)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC3", y = "PC4")
+
+pca_plot_AM <-
+  ggplot(pca_df, aes(x = PC1, y = PC2, color = Age_group, shape = BMI_group)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC1", y = "PC2")
+
+pca_plot_AM2 <-
+  ggplot(pca_df, aes(x = PC3, y = PC4, color = Age_group, shape = BMI_group)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC3", y = "PC4")
+
+pca_plot_SM <-
+  ggplot(pca_df, aes(x = PC1, y = PC2, color = Sex, shape = BMI_group)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC1", y = "PC2")
+
+pca_plot_SM2 <-
+  ggplot(pca_df, aes(x = PC3, y = PC4, color = Sex, shape = BMI_group)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC3", y = "PC4")
+
+pca_plot_RA <-
+  ggplot(pca_df, aes(x = PC1, y = PC2, color = Randomisation, shape = BMI_group)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC1", y = "PC2")
+
+pca_plot_RA2 <-
+  ggplot(pca_df, aes(x = PC3, y = PC4, color = Randomisation, shape = BMI_group)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC3", y = "PC4")
+
+pca_plot_12 <-
+  ggplot(pca_df, aes(x = PC1, y = PC2, color = Randomisation, shape = Age_group)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC1", y = "PC2")
+
+pca_plot_34 <-
+  ggplot(pca_df, aes(x = PC3, y = PC4, color = Randomisation, shape = Age_group)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "PCA of pseudobulk samples", x = "PC3", y = "PC4")
+
+pdf(file = "outputs/plots/ConM_CoFounder_assessments.pdf", paper = "a4r")
+print(pca_plot_SR)
+print(pca_plot_SR2)
+print(pca_plot_AS)
+print(pca_plot_AS2)
+print(pca_plot_AM)
+print(pca_plot_AM2)
+print(pca_plot_SM)
+print(pca_plot_SM2)
+print(pca_plot_RA)
+print(pca_plot_RA2)
+print(pca_plot_12)
+print(pca_plot_34)
+dev.off()
