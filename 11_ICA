@@ -1,0 +1,209 @@
+### Author Qamar Feddah
+### Script to perform sICA 
+
+## Library loading and set the working directory
+library(Seurat)
+library(pheatmap)
+library(tidyverse)
+library(SparseICA)
+library(DESeq2)
+library(scico)
+
+set.seed(333)
+
+project_dir <- "../.."
+setwd(project_dir)
+
+## Load the Seurat Object and Seurat Object metadata 
+seurat_conM <- readRDS("Analysis/08_Pseudobulk_Analysis/seurat_ConM_finetune_cluster.RDS")
+
+## Load sample metadata used for colData
+sample_meta_data <- read.csv("Raw_data/Metadata.csv", sep = ";", dec = ",")
+
+# Metadata clean and data type transformation
+sample_meta_data <- sample_meta_data %>%
+  select(Donor, Visit, Sex, Randomisation, Age_group, BMI_group, IgG, IgG1, IgG2, IgG3, IgG4, IgA)
+
+sample_meta_data$Sex <- as.numeric(as.factor(sample_meta_data$Sex)) - 1
+sample_meta_data$Randomisation <- as.numeric(as.factor(sample_meta_data$Randomisation)) - 1
+sample_meta_data$Age_group <- as.numeric(as.factor(sample_meta_data$Age_group)) - 1
+sample_meta_data$BMI_group <- as.numeric(as.factor(sample_meta_data$BMI_group)) - 1
+sample_meta_data$IgG <- as.numeric(sample_meta_data$IgG)
+sample_meta_data$IgG1 <- as.numeric(sample_meta_data$IgG1)
+sample_meta_data$IgG2 <- as.numeric(sample_meta_data$IgG2)
+sample_meta_data$IgG3 <- as.numeric(sample_meta_data$IgG3)
+sample_meta_data$IgG4 <- as.numeric(sample_meta_data$IgG4)
+sample_meta_data$IgA <- as.numeric(sample_meta_data$IgA)
+
+## Create output folder
+dir.create("Analysis/09_ICA/9_1_ICA_conM_no_ID50", recursive = TRUE, showWarnings = FALSE)
+
+## Create the pseudobulk expression matrix
+count_matrix <- AggregateExpression(
+  seurat_conM,
+  group.by = c("Donor", "Visit"),
+  assays = "RNA",
+  slot = "counts",
+  return.seurat = FALSE
+)
+
+count_matrix <- count_matrix$RNA %>%
+  as.matrix()
+
+## Create the column data frame
+colData <- data.frame(Sample = colnames(count_matrix))
+
+sample_meta_data$Donor_Visit <- paste(sample_meta_data$Donor, sample_meta_data$Visit, sep = "_")
+
+colData <-
+  left_join(colData, sample_meta_data, by = c("Sample" = "Donor_Visit")) %>%
+  as.data.frame() %>%
+  distinct(Sample, .keep_all = TRUE) %>%
+  select(Sample, Visit, Sex, Randomisation, Age_group, BMI_group, IgG, IgG1, IgG2, IgG3, IgG4, IgA) %>%
+  column_to_rownames(var = "Sample")
+
+colData <- colData[colnames(count_matrix), , drop = FALSE]
+colData$Visit <- as.numeric(as.factor(colData$Visit)) - 1
+
+## Create a DESeq Data Set
+dds <- DESeqDataSetFromMatrix(
+  countData = count_matrix, 
+  colData = colData,
+  design = ~ 1
+)
+
+## Remove genes that have counts less than 10 in total
+keep_genes <- rowSums(counts(dds)) >= 10
+dds <- dds[keep_genes, ]
+
+## Normalization
+dds <- vst(dds, blind = TRUE)
+
+## Extract normalized expression matrix
+datExpr <- t(assay(dds))
+
+## Define and finetune the parameters for the IC component and sparsity
+pca_result <- prcomp(datExpr, center = TRUE, scale. = TRUE)
+
+## Compute variance explained by PCA
+pve <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+## Prepare data for scree plot
+var.df <- data.frame(PC = 1:length(pve), Variance_Explained = cumsum(pve))
+
+## Scree plot
+scree_plot <- ggplot(var.df, aes(x = PC, y = Variance_Explained)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Scree Plot", x = "Principal Components", y = "Cumulative Variance Explained") +
+  theme_minimal()
+
+## Perform Sparse ICA
+n_comp <- 35
+ica_result <- sparseICA(
+  scale(t(datExpr), center = TRUE, scale = FALSE),
+  n.comp = n_comp,
+  BIC_verbose = TRUE
+)
+
+## Extract Independent Components
+ic_metasamples <- ica_result$estM
+row.names(ic_metasamples) <- IC_names <- paste0("IC", seq(1, n_comp))
+
+ic_metagenes <- ica_result$estS
+row.names(ic_metagenes) <- row.names(t(datExpr))
+colnames(ic_metagenes) <- IC_names
+
+## Correlate with the Metadata
+metaData <- colData
+
+cor_results <- cor(
+  t(ic_metasamples),
+  metaData,
+  method = "spearman",
+  use = "pairwise.complete.obs"
+)
+
+p_values <- apply(
+  metaData,
+  2,
+  function(x) apply(ic_metasamples, 1, function(y) cor.test(y, x, method = "spearman")$p.value)
+)
+
+significance_stars <- function(p_value) {
+  if (is.na(p_value)) return("")
+  if (p_value < 0.001) return("***")
+  if (p_value < 0.01) return("**")
+  if (p_value < 0.05) return("*")
+  ""
+}
+
+## Apply function to create annotation matrix
+star_matrix <- matrix("", nrow = nrow(p_values), ncol = ncol(p_values))
+rownames(star_matrix) <- rownames(p_values)
+colnames(star_matrix) <- colnames(p_values)
+
+for (i in 1:nrow(p_values)) {
+  for (j in 1:ncol(p_values)) {
+    star_matrix[i, j] <- significance_stars(p_values[i, j])
+  }
+}
+
+## Format text for heatmap
+text_matrix <- matrix("", nrow = nrow(cor_results), ncol = ncol(cor_results))
+rownames(text_matrix) <- rownames(cor_results)
+colnames(text_matrix) <- colnames(cor_results)
+
+for (i in 1:nrow(cor_results)) {
+  for (j in 1:ncol(cor_results)) {
+    if (!is.na(cor_results[i, j])) {
+      text_matrix[i, j] <- paste0(round(cor_results[i, j], 2), star_matrix[i, j])
+    }
+  }
+}
+
+## Mask non-significant correlations
+cor_results_filtered <- cor_results
+cor_results_filtered[p_values >= 0.05] <- 0
+
+## Generate heatmap with values and significance stars
+heatmap_plot <- pheatmap(
+  cor_results_filtered,
+  color = scico::scico(101, palette = "bam"),
+  cluster_rows = FALSE,
+  cluster_cols = FALSE,
+  breaks = seq(-1, 1, length.out = 101),
+  na_col = "black",
+  display_numbers = text_matrix,
+  fontsize_number = 10,
+  main = "ConM - Significant Correlations: ICs vs Phenotypes"
+)
+
+p95 <- as.integer(dim(t(datExpr))[1] * 0.05)
+ics <- which(rowSums(cor_results_filtered) != 0)
+ics <- names(ics)
+
+for (ic in ics) {
+  IC_genes <- ic_metagenes[, ic]
+  
+  IC_genes <- data.frame(Gene = rownames(ic_metagenes), Loading = IC_genes)
+  
+  IC_genes <- IC_genes %>%
+    arrange(desc(abs(Loading))) %>%
+    filter(Loading != 0)
+  
+  write.csv(
+    head(IC_genes, p95),
+    paste("Analysis/09_ICA/9_1_ICA_conM_no_ID50/Top_", ic, "_genes_Loadings.csv", sep = ""),
+    row.names = FALSE
+  )
+  
+  print(paste0("Most important genes for the ", ic))
+  Top <- head(IC_genes, p95); Top
+}
+
+pdf(file = "Analysis/09_ICA/9_1_ICA_conM_no_ID50/ConM_sICA_plots.pdf", width = 10, height = 8)
+print(scree_plot)
+grid::grid.newpage()
+grid::grid.draw(heatmap_plot$gtable)
+dev.off()
