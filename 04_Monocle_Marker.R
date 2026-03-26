@@ -11,8 +11,10 @@ library(ggplot2)
 library(scCustomize)
 
 # read in the data
-setwd("~/ConM_project/Analysis/04_Graph_based_marker_definition")
-seurat_conM <- readRDS("~/ConM_project/Analysis/02_Data_Normalization/seurat_conM_Clustered.RDS")
+project_dir <- "../.."
+setwd(project_dir)
+
+seurat_conM <- readRDS("Analysis/02_Data_Normalization/seurat_conM_Clustered.RDS")
 DefaultAssay(seurat_conM) <- "SCT"
 
 # monocle3 requires cell_data_set object
@@ -64,7 +66,7 @@ top_genes <-
   head(n = 300L); top_genes
 
 top_select <- row.names(subset(top_genes))
-write_csv(top_genes, file = "Top_Gene_Graph_based_Markers_Monocle3.csv")
+write_csv(top_genes, file = "Analysis/04_Graph_based_marker_definition/Top_Gene_Graph_based_Markers_Monocle3.csv")
 gene_module_df <- find_gene_modules(cds_conM[top_select,], resolution=1e-2)
 
 
@@ -102,7 +104,7 @@ plot_cells(cds_conM, genes=row.names(top_genes)[251:300],
 top_select <- row.names(subset(top_genes))
 gene_module_df <- find_gene_modules(cds_conM[top_select,], resolution=1e-2)
 
-write_csv(gene_module_df, file = "Gene_Modules_conM_Monocle3.csv")
+write_csv(gene_module_df, file = "Analysis/04_Graph_based_marker_definition/Gene_Modules_conM_Monocle3.csv")
 
 cell_group_df <- tibble::tibble(cell=row.names(colData(cds_conM)), 
                                 cell_group=clusters(cds_conM)[colnames(cds_conM)])
@@ -119,8 +121,7 @@ umap_plot <-
              graph_label_size = 8, group_label_size = 8, cell_size = 0.75)
 
 DefaultAssay(seurat_conM) <- "SCT"
-# dot_plot <- DotPlot(seurat_conM, features = top_genes$gene_short_name[1:75]) +
-#   RotatedAxis()
+
 dotplot_cl <- Clustered_DotPlot(seurat_conM, features = top_genes$gene_short_name[1:300], 
                                 assay = "SCT", plot_km_elbow = FALSE)
 
@@ -136,6 +137,6 @@ print(deg_feature_plot_5)
 print(deg_feature_plot_6)
 dev.off()
 
-pdf(file = "conM_Graph_based_RNA_markers_dotplot.pdf", height = 50, width = 8)
+pdf(file = "Analysis/04_Graph_based_marker_definition/conM_Graph_based_RNA_markers_dotplot.pdf", height = 50, width = 8)
 print(dotplot_cl)
 dev.off()
