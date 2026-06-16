@@ -1,51 +1,49 @@
-## Project pipeline diagram
-
 ```mermaid
-flowchart TD
+flowchart LR
 
-    A[Raw microscopy dataset<br/>TIFF stack<br/>3 channels × 121 time points] --> B[01_organize_images.py<br/>Split stack by channel and frame]
+    A[Raw microscopy files<br/>3 channels × 121 time frames] --> B[01_split_channels.py<br/>split files by channel]
 
-    B --> C1[Phase contrast folder<br/>PC frames 001-121]
-    B --> C2[ZapA folder<br/>ZapA frames 001-121]
-    B --> C3[PBP2B folder<br/>PBP2B frames 001-121]
+    B --> C1[Phase contrast<br/>cell shape]
+    B --> C2[ZapA RFP<br/>division marker]
+    B --> C3[PBP2B GFP<br/>cell wall synthesis marker]
 
-    C1 --> D1[02_run_pretrained_cellpose.py<br/>Pretrained Cellpose v3 on phase contrast]
-    C3 --> D2[03_preprocess_signal_channels.py<br/>Noise reduction on PBP2B]
+    C1 --> D[Cellpose v3 segmentation<br/>detect bacterial cells]
+    C3 --> E[PBP2B preprocessing<br/>noise reduction test]
 
-    D2 --> D3[Test Cellpose on denoised PBP2B]
-    D1 --> E[Segmentation quality check<br/>Masks, outlines, screenshots]
-    D3 --> E
+    D --> F[Segmentation quality check<br/>masks and outlines]
+    E --> F
 
-    E --> F[04_prepare_training_data.py<br/>Select training frames<br/>Control and sample datasets]
+    F --> G[Select training images]
+    G --> H[Manual mask correction<br/>ImageJ or napari]
 
-    F --> G[Manual correction<br/>ImageJ or napari<br/>Correct Cellpose masks]
+    H --> I[Train custom Cellpose model]
+    I --> J[Validate trained model]
 
-    G --> H[05_train_cellpose_model.py<br/>Train custom Cellpose v3 model]
+    J --> K{Masks good enough?}
 
-    H --> I[Validate trained model<br/>Compare predicted masks with corrected masks]
+    K -- No --> G
+    K -- Yes --> L[Segment full dataset<br/>final cell masks]
 
-    I --> J{Are masks good enough?}
+    L --> M1[Cell feature extraction<br/>centroid, area, length]
 
-    J -- No --> F
-    J -- Yes --> K[06_segment_full_dataset.py<br/>Segment all frames with trained model]
+    M1 --> M2[Cell tracking<br/>link cells between frames<br/>LapTrack or TrackMate]
 
-    K --> L[Final segmentation outputs<br/>Masks, outlines, GIFs]
+    M2 --> M3[Track validation<br/>track IDs and division events]
 
-    L --> M[07_track_cells.py<br/>Track cells over time<br/>LapTrack or TrackMate]
+    M3 --> N[Per-track measurements<br/>shape and signal intensity]
 
-    M --> N[08_measure_cells_and_signals.py<br/>Measure shape and fluorescence]
+    C2 --> N
+    C3 --> N
 
-    N --> O1[Cell length over time]
-    N --> O2[ZapA mid-cell intensity over time]
-    N --> O3[PBP2B mid-cell intensity over time]
+    N --> O1[Cell length<br/>over time]
+    N --> O2[ZapA mid-cell<br/>intensity]
+    N --> O3[PBP2B mid-cell<br/>intensity]
     N --> O4[Division timing]
 
-    O1 --> P[09_plot_results.py<br/>Create plots]
+    O1 --> P[Plots, CSV files,<br/>GIFs and interpretation]
     O2 --> P
     O3 --> P
     O4 --> P
 
-    P --> Q[Final outputs<br/>CSV files, plots, GIFs, trained models]
-
-    Q --> R[README.md report<br/>Results, validation, interpretation]
-    Q --> S[Presentation<br/>Background, approach, issues, results, outlook]
+    P --> Q[README report<br/>and presentation]
+```
